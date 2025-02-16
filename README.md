@@ -65,8 +65,9 @@ Converts HTML text back to Markdown.
   The conversion includes:
   - Converting `<h1>`–`<h6>` tags to Markdown headers.
   - Converting `<strong>` and `<em>` tags to Markdown bold and italic respectively.
-  - Converting `<br>` tags to two spaces followed by a newline.
+  - Converting `<br>` tags to two spaces followed by a newline (`  \n`).
   - Removing `<p>` wrappers from paragraphs.
+  - Converting `<ul><li>` and `<ol><li>` to Markdown list syntax, preserving nested lists with proper indentation.
 
 ## Supported Syntax
 
