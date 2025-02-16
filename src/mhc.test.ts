@@ -103,4 +103,42 @@ describe('MarkdownParser', () => {
             expect(parser.toHTML(markdown, true).trim()).toBe(expectedHtml);
         });
     });
+
+    describe('MarkdownParser List Conversion', () => {
+        it('converts unordered lists from Markdown to HTML', () => {
+          const markdown = "- Item 1\n- Item 2\n- Item 3";
+          const expectedHtml = "<ul><li>Item 1</li><li>Item 2</li><li>Item 3</li></ul>";
+          expect(parser.toHTML(markdown).replace(/\s+/g, '')).toBe(expectedHtml.replace(/\s+/g, ''));
+        });
+      
+        it('converts ordered lists from Markdown to HTML', () => {
+          const markdown = "1. First\n2. Second\n3. Third";
+          const expectedHtml = "<ol><li>First</li><li>Second</li><li>Third</li></ol>";
+          expect(parser.toHTML(markdown).replace(/\s+/g, '')).toBe(expectedHtml.replace(/\s+/g, ''));
+        });
+      
+        it('handles formatted content inside list items', () => {
+          const markdown = "- Item with **bold** and *italic*\n- Normal item";
+          const expectedHtml = "<ul><li>Item with <strong>bold</strong> and <em>italic</em></li><li>Normal item</li></ul>";
+          expect(parser.toHTML(markdown).replace(/\s+/g, '')).toBe(expectedHtml.replace(/\s+/g, ''));
+        });
+      
+        it('converts nested unordered lists', () => {
+          const markdown = "- Level 1\n  - Level 2\n  - Level 2.1\n- Level 1 again";
+          const expectedHtml = "<ul><li>Level 1<ul><li>Level 2</li><li>Level 2.1</li></ul></li><li>Level 1 again</li></ul>";
+          expect(parser.toHTML(markdown).replace(/\s+/g, '')).toBe(expectedHtml.replace(/\s+/g, ''));
+        });
+      
+        it('converts mixed nested lists', () => {
+          const markdown = "1. First\n   - Sub item\n   - Sub item 2\n2. Second";
+          const expectedHtml = "<ol><li>First<ul><li>Sub item</li><li>Sub item 2</li></ul></li><li>Second</li></ol>";
+          expect(parser.toHTML(markdown).replace(/\s+/g, '')).toBe(expectedHtml.replace(/\s+/g, ''));
+        });
+      
+        it('preserves formatting when converting from HTML to Markdown', () => {
+          const html = "<ul><li>Item with <strong>bold</strong> and <em>italic</em></li><li>Normal item</li></ul>";
+          const expectedMarkdown = "- Item with **bold** and *italic*\n- Normal item";
+          expect(parser.toMarkdown(html).replace(/\s+/g, '')).toBe(expectedMarkdown.replace(/\s+/g, ''));
+        });
+      });
 });

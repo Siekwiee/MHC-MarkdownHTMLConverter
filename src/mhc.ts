@@ -37,6 +37,20 @@ export class MarkdownParser implements MarkdownConverter {
         replacement: (match: string, text: string) => {
           return this.processInlineElements(text);
         }
+      }],
+      ['unorderedList', {
+        pattern: /^(\s*)[-*]\s+(.+)$/gm,
+        replacement: (match: string, indent: string, content: string) => {
+          const processedContent = this.processInlineElements(content);
+          return `<ul><li>${processedContent}</li></ul>`;
+        }
+      }],
+      ['orderedList', {
+        pattern: /^(\s*)\d+\.\s+(.+)$/gm,
+        replacement: (match: string, indent: string, content: string) => {
+          const processedContent = this.processInlineElements(content);
+          return `<ol><li>${processedContent}</li></ol>`;
+        }
       }]
     ]);
 
@@ -61,6 +75,23 @@ export class MarkdownParser implements MarkdownConverter {
       ['paragraph', {
         pattern: /<p>(.*?)<\/p>/g,
         replacement: '$1'
+      }],
+      ['unorderedList', {
+        pattern: /<ul>(.*?)<\/ul>/g,
+        replacement: (match: string, content: string) => {
+          return content
+            .replace(/<li>(.*?)<\/li>/g, (_, text) => `- ${text}\n`)
+            .replace(/\n$/, '');
+        }
+      }],
+      ['orderedList', {
+        pattern: /<ol>(.*?)<\/ol>/g,
+        replacement: (match: string, content: string) => {
+          let index = 1;
+          return content
+            .replace(/<li>(.*?)<\/li>/g, (_, text) => `${index++}. ${text}\n`)
+            .replace(/\n$/, '');
+        }
       }]
     ]);
   }
@@ -78,12 +109,69 @@ export class MarkdownParser implements MarkdownConverter {
     return text;
   }
 
+  private processLists(block: string): string {
+    const lines = block.split('\n');
+    let html = '';
+    let currentIndent = 0;
+    let listStack: { tag: string, indent: number }[] = [];
+
+    lines.forEach((line, index) => {
+      // Get the indentation level and content
+      const match = line.match(/^(\s*)([-*]|\d+\.)\s+(.+)$/);
+      if (!match) return;
+
+      const [_, indent, marker, content] = match;
+      const indentLevel = indent.length;
+      const isOrdered = /\d+\./.test(marker);
+      const tag = isOrdered ? 'ol' : 'ul';
+
+      // Handle indentation changes
+      if (indentLevel > currentIndent) {
+        // Starting a new nested list
+        listStack.push({ tag, indent: indentLevel });
+        html += `<${tag}><li>${this.processInlineElements(content)}`;
+      } else if (indentLevel < currentIndent) {
+        // Closing nested lists
+        while (listStack.length > 0 && listStack[listStack.length - 1].indent > indentLevel) {
+          html += `</li></${listStack.pop()?.tag}>`;
+        }
+        html += `</li><li>${this.processInlineElements(content)}`;
+      } else {
+        // Same level, new list item
+        if (html === '') {
+          // First item in the list
+          listStack.push({ tag, indent: indentLevel });
+          html += `<${tag}><li>${this.processInlineElements(content)}`;
+        } else {
+          html += `</li><li>${this.processInlineElements(content)}`;
+        }
+      }
+
+      currentIndent = indentLevel;
+
+      // Handle the last line
+      if (index === lines.length - 1) {
+        html += '</li>';
+        while (listStack.length > 0) {
+          html += `</${listStack.pop()?.tag}>`;
+        }
+      }
+    });
+
+    return html;
+  }
+
   toHTML(markdown: string, wrapParagraphs: boolean = false): string {
     let html = markdown;
     
     // Split into blocks by double newlines
     let blocks = html.split(/\n\n+/);
     html = blocks.map(block => {
+      // Check if this block is a list
+      if (/^(\s*(?:[-*]|\d+\.)\s+)/.test(block)) {
+        return this.processLists(block);
+      }
+
       // Handle line breaks before splitting into lines
       block = block.replace(/(.+?)  \n(.+)/g, (_, line1, line2) => {
         return `<p>${this.processInlineElements(line1)}<br>${this.processInlineElements(line2)}</p>`;
